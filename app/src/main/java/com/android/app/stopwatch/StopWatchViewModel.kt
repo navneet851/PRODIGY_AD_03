@@ -1,35 +1,36 @@
 package com.android.app.stopwatch
 
+import android.util.Log
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
 import java.util.Locale
+import kotlin.text.format
 
 class StopWatchViewModel : ViewModel() {
     private var time = 0L
     private var isRunning = false
 
-    val formattedTime: String
-        get() = String.format(Locale.getDefault(), "%02d:%02d:%02d", time / 3600, (time % 3600) / 60, time % 60)
+    private val _formattedTime = mutableStateOf("00:00:00")
+    val formattedTime: State<String> = _formattedTime
 
-    fun start() {
-        if (isRunning) return
-        isRunning = true
-        viewModelScope.launch {
-            while (isRunning) {
-                delay(1000L)
-                time++
-            }
-        }
+    init {
+        _formattedTime.value = formatTime(time)
     }
 
-    fun stop() {
-        isRunning = false
+    fun formatTime(milliseconds: Long): String {
+        val seconds = (milliseconds / 1000) % 60
+        val minutes = (milliseconds / (1000 * 60)) % 60
+        val hours = (milliseconds / (1000 * 60 * 60)) % 24
+        val millis = (milliseconds % 1000) / 10 // Change here
+
+        val formatter = DecimalFormat("00")
+        val milliFormatter = DecimalFormat("00") // Change here
+        return "${formatter.format(hours)}:${formatter.format(minutes)}:${formatter.format(seconds)}:${milliFormatter.format(millis)}"
     }
 
-    fun reset() {
-        isRunning = false
-        time = 0L
-    }
 }

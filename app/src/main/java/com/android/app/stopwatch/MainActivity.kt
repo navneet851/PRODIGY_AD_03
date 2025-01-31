@@ -19,6 +19,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -32,21 +39,23 @@ import com.android.app.stopwatch.ui.theme.DarkBlue
 import com.android.app.stopwatch.ui.theme.LightBlue
 import com.android.app.stopwatch.ui.theme.StopWatchTheme
 import com.android.app.stopwatch.ui.theme.Teal
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
-    val stopWatchViewModel : StopWatchViewModel by viewModels()
+
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+
             StopWatchTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) {
+                    val viewModel : StopWatchViewModel = viewModel()
+                    val time = viewModel.formattedTime.value
                     StopWatch(
-                        currentTime = stopWatchViewModel.formattedTime,
-                        onStartClick = stopWatchViewModel::start,
-                        onPauseClick = stopWatchViewModel::stop,
-                        onResetClick = stopWatchViewModel::reset,
+                        stopWatchViewModel = viewModel
                     )
                 }
             }
@@ -54,14 +63,31 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Preview
+
 @Composable
 private fun StopWatch(
-    currentTime: String = "00:00:00",
-    onStartClick: () -> Unit = {},
-    onPauseClick: () -> Unit = {},
-    onResetClick: () -> Unit = {}
+    stopWatchViewModel: StopWatchViewModel
 ) {
+    var isRunning by rememberSaveable{
+        mutableStateOf(false)
+    }
+
+    var startTime by rememberSaveable { mutableLongStateOf(0L) }
+    var elapsedTime by rememberSaveable { mutableLongStateOf(0L) }
+
+    LaunchedEffect(isRunning) {
+        if (isRunning) {
+            startTime = System.currentTimeMillis() - elapsedTime
+            while (isRunning) {
+                elapsedTime = System.currentTimeMillis() - startTime
+                delay(10L) // Update every 10 milliseconds for smoother millisecond display
+            }
+        }
+    }
+
+    val formattedTime = stopWatchViewModel.formatTime(elapsedTime)
+
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -91,7 +117,7 @@ private fun StopWatch(
             ) {
 
                 Text(
-                    currentTime,
+                    formattedTime,
                     fontSize = sp,
                     fontWeight = FontWeight.Bold,
                     color = timerColor
@@ -102,17 +128,22 @@ private fun StopWatch(
                     .padding(16.dp)
             ) {
                 Button(
-                    onClick = onStartClick,
+                    onClick = {
+                        isRunning = !isRunning
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Cyan,
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Start")
+                    Text(if (isRunning) "Pause" else "Start")
                 }
                 Spacer(modifier = Modifier.padding(10.dp))
                 Button(
-                    onClick = onResetClick,
+                    onClick = {
+                        isRunning = false
+                        elapsedTime = 0L
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Teal,
                         contentColor = Color.White
